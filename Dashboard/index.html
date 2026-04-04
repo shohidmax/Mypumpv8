@@ -58,11 +58,10 @@
                         
                         <!-- Motor Control Center -->
                         <div class="card bg-base-300 shadow-xl mb-8">
-                            <div class="card-body items-center text-center">
+                            <div class="card-body p-4 sm:p-6 items-center text-center">
                                 <h2 class="card-title text-2xl">Motor Control Center</h2>
-                                <div class="flex items-center gap-4 my-4">
-                                    <!-- Corrected ID: motor-animation-icon -->
-                                    <svg id="motor-animation-icon" xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-error transition-colors duration-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <div class="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-6 my-4 w-full">
+                                    <svg id="motor-animation-icon" xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 sm:h-24 sm:w-24 text-error transition-colors duration-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                         <g id="motor-gear">
                                             <path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/>
                                             <path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/>
@@ -72,9 +71,9 @@
                                             <path d="m4.93 19.07 1.41-1.41"/><path d="m17.66 6.34 1.41-1.41"/>
                                         </g>
                                     </svg>
-                                    <div>
-                                        <p class="text-lg">Current Status</p>
-                                        <p id="motorStatus" class="text-4xl font-bold text-info">--</p>
+                                    <div class="text-center sm:text-left">
+                                        <p class="text-sm sm:text-lg opacity-80 uppercase tracking-widest sm:normal-case sm:tracking-normal">Status</p>
+                                        <p id="motorStatus" class="text-4xl sm:text-5xl font-black text-info leading-none">--</p>
                                     </div>
                                 </div>
                                 <div class="card-actions justify-center w-full">
@@ -97,6 +96,22 @@
                             <div class="card bg-base-200 shadow-xl"><div class="card-body p-4 sm:p-6"><h2 class="card-title">Last Action</h2><p id="lastAction" class="text-lg font-bold truncate">--</p></div></div>
                         </div>
 
+                        <!-- Automation Schedules -->
+                        <div class="card bg-base-200 shadow-xl mb-8">
+                            <div class="card-body p-4 sm:p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h2 class="card-title text-xl sm:text-2xl">Automation Schedules</h2>
+                                    <button onclick="openScheduleModal()" class="btn btn-sm btn-primary control-btn" disabled>+ Add New</button>
+                                </div>
+                                <div id="scheduleListContainer" class="space-y-3 max-h-64 overflow-y-auto w-full p-2 bg-base-100 rounded-lg border border-base-300">
+                                    <div class="flex flex-col items-center justify-center p-8 text-gray-400 gap-3">
+                                        <span class="loading loading-bars loading-lg text-primary"></span>
+                                        <span class="font-medium text-sm animate-pulse tracking-wide">Syncing Data with Server...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="card bg-base-200 shadow-xl">
                             <div class="card-body p-4 sm:p-6">
                                 <div class="flex justify-between items-center mb-4">
@@ -108,12 +123,12 @@
                                 </div>
                                 
                                 <!-- Filter Controls -->
-                                <div class="flex flex-wrap gap-2 mb-4 items-center justify-center sm:justify-start bg-base-100 p-2 rounded-lg">
-                                    <input type="date" id="startDate" class="input input-sm input-bordered" />
-                                    <span class="text-sm font-bold">to</span>
-                                    <input type="date" id="endDate" class="input input-sm input-bordered" />
-                                    <button onclick="applyFilter()" class="btn btn-sm btn-primary control-btn">Filter</button>
-                                    <button onclick="reloadLogs()" class="btn btn-sm btn-ghost control-btn" title="Reload Logs">
+                                <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr_auto_auto] gap-2 mb-4 items-center bg-base-100 p-3 rounded-lg border border-base-300">
+                                    <input type="date" id="startDate" class="input input-sm input-bordered w-full" />
+                                    <span class="text-sm font-bold text-center">to</span>
+                                    <input type="date" id="endDate" class="input input-sm input-bordered w-full" />
+                                    <button onclick="applyFilter()" class="btn btn-sm btn-primary w-full sm:w-auto control-btn">Filter</button>
+                                    <button onclick="reloadLogs()" class="btn btn-sm btn-ghost w-full sm:w-auto control-btn" title="Reload Logs">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                     </button>
                                 </div>
@@ -152,7 +167,7 @@
                 <li>
                     <label class="label cursor-pointer p-3 bg-base-100 rounded-lg shadow-sm border border-base-300">
                         <span class="label-text font-bold text-error">Always ON Mode</span>
-                        <input type="checkbox" id="alwaysOnToggle" class="toggle toggle-error" onchange="toggleAlwaysOn(this.checked)" disabled />
+                        <input type="checkbox" id="alwaysOnToggle" class="toggle toggle-error control-input" onclick="requestAlwaysOnToggle(event, this)" disabled />
                     </label>
                 </li>
                 <div class="divider"></div>
@@ -168,14 +183,9 @@
 
     <dialog id="schedule_modal" class="modal">
         <div class="modal-box max-w-2xl bg-base-100">
-            <h3 class="font-bold text-xl mb-4 border-b pb-2">Automation Schedules</h3>
-            
-            <div id="scheduleListContainer" class="space-y-3 mb-6 max-h-64 overflow-y-auto w-full p-2 bg-base-200 rounded-lg">
-                <div class="text-center text-sm p-4 text-gray-500">Loading schedules...</div>
-            </div>
+            <h3 class="font-bold text-xl mb-4 border-b pb-2">Create Automation Schedule</h3>
 
             <div class="bg-base-300 p-5 rounded-lg">
-                <h4 class="font-bold text-lg mb-4">Create New Schedule</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="form-control">
                         <label class="label"><span class="label-text font-semibold">Schedule Type</span></label>
@@ -211,14 +221,14 @@
                     </div>
                 </div>
                 
-                <div id="schedDateInputs" class="mt-4 hidden grid grid-cols-2 gap-4 p-4 bg-base-200 rounded-lg border border-base-300">
+                <div id="schedDateInputs" class="mt-4 hidden grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-base-200 rounded-lg border border-base-300">
                     <div class="form-control">
                         <label class="label"><span class="label-text font-semibold">Start Date</span></label>
-                        <input type="date" id="schedStartDate" class="input input-bordered" />
+                        <input type="date" id="schedStartDate" class="input input-bordered w-full" />
                     </div>
                     <div class="form-control">
                         <label class="label"><span class="label-text font-semibold">End Date</span></label>
-                        <input type="date" id="schedEndDate" class="input input-bordered" />
+                        <input type="date" id="schedEndDate" class="input input-bordered w-full" />
                     </div>
                 </div>
                 
@@ -375,6 +385,7 @@
             else if (pendingAction.command === 'RESTART_ESP') displayMsg = 'Restarting Device...';
             else if (pendingAction.command === 'CLEAR_LOGS') displayMsg = 'Clearing Logs...';
             else if (pendingAction.command === 'SET_WSHOST') displayMsg = 'Saving new Host...';
+            else if (pendingAction.command === 'TOGGLE_ALWAYS_ON') displayMsg = pendingAction.value ? 'Enabling Always ON Mode...' : 'Disabling Always ON Mode...';
 
             showToast(displayMsg, 'info');
             pendingAction = null;
@@ -510,9 +521,14 @@
         if(nextBtn) nextBtn.disabled = (logCurrentPage >= logTotalPages - 1);
     }
 
-    function toggleAlwaysOn(isChecked) {
-        sendCommand('TOGGLE_ALWAYS_ON', isChecked);
-        showToast(isChecked ? "Always ON Enforced" : "Always ON Disabled", "info");
+    function requestAlwaysOnToggle(event, element) {
+        event.preventDefault(); // Stop visual change until server confirms
+        const isTurningOn = !element.checked;
+        pendingAction = { command: 'TOGGLE_ALWAYS_ON', value: isTurningOn };
+        document.getElementById('action_modal_text').textContent = isTurningOn 
+            ? "Are you sure you want to ENABLE Always ON mode? (This ignores all schedules until disabled)" 
+            : "Are you sure you want to DISABLE Always ON mode?";
+        action_modal.showModal();
     }
 
     // Schedule Management Logic
@@ -560,7 +576,7 @@
         const container = document.getElementById('scheduleListContainer');
         container.innerHTML = '';
         if(!schedules || schedules.length === 0) {
-            container.innerHTML = '<div class="text-center p-6 text-gray-500 bg-base-100 rounded border border-dashed border-base-300">No active schedules found. Create one using the form below.</div>';
+            container.innerHTML = '<div class="text-center p-6 text-gray-500 bg-base-100 rounded-lg border-2 border-dashed border-base-300">No active schedules found.<br/>Click <span class="badge badge-primary badge-sm">+ Add New</span> to create one.</div>';
             return;
         }
         
@@ -580,12 +596,12 @@
             }
 
             container.innerHTML += `
-                <div class="flex justify-between items-center bg-base-100 p-4 rounded-lg shadow-sm border border-base-300 gap-3 hover:shadow-md transition">
-                    <div class="flex-1">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-base-100 p-4 rounded-lg shadow-sm border border-base-300 gap-3 hover:shadow-md transition">
+                    <div class="flex-1 w-full">
                         ${timeline}
                         <div class="text-sm font-medium opacity-70 mt-1"><span class="badge badge-sm badge-outline mr-1">${s.type}</span> ${desc}</div>
                     </div>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center justify-between w-full sm:w-auto gap-3 mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-base-300">
                         <input type="checkbox" class="toggle toggle-success toggle-md" ${s.isActive ? 'checked' : ''} onchange="toggleSchedule('${s._id}')" />
                         <button onclick="deleteSchedule('${s._id}')" class="btn btn-square btn-ghost text-error btn-sm hover:bg-error hover:text-white transition">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>

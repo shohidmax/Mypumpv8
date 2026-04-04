@@ -381,13 +381,13 @@ setInterval(async () => {
             }
         });
 
-        if (triggerOn && lastMotorStatus === 'OFF') {
+        if (triggerOn) {
             console.log("Automation Engine: Triggering Motor ON");
             if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
                 esp32Client.send(JSON.stringify({ command: 'RELAY_1_AUTO' }));
             }
         }
-        if (triggerOff && lastMotorStatus === 'ON') {
+        if (triggerOff) {
             console.log("Automation Engine: Triggering Motor OFF");
             if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
                 esp32Client.send(JSON.stringify({ command: 'RELAY_2_AUTO' }));
