@@ -119,6 +119,25 @@ wss.on('connection', (ws) => {
                 ws.send('{"command":"RELAY_1_ALWAYS"}');
             }
 
+        } else if (data.type === 'web-identify' && !ws.isIdentified) {
+            clearTimeout(identificationTimeout);
+            console.log('Web client identified explicitly.');
+            webClients.add(ws);
+            ws.isIdentified = true;
+            const espStatus = (esp32Client && esp32Client.readyState === WebSocket.OPEN) ? 'online' : 'offline';
+            ws.send(JSON.stringify({ type: 'espStatus', status: espStatus }));
+            
+            // Send known motor status
+            ws.send(JSON.stringify({
+                type: 'statusUpdate',
+                payload: {
+                   lastAction: "Server connected", 
+                   motorStatus: lastMotorStatus,
+                   systemMode: "Normal"
+                }
+            }));
+            
+
         } else if (data.type === 'command' && ws !== esp32Client) {
             // Handle Web Client Commands
             if (data.command === 'GET_LOG_PAGE') {

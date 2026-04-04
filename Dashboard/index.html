@@ -302,6 +302,7 @@
         
         ws.onopen = () => { 
             updateStatus('connectionStatus', 'Server Connected', 'badge-info'); 
+            ws.send(JSON.stringify({ type: 'web-identify' }));
             sendCommand('GET_ALWAYS_ON');
             sendCommand('GET_SCHEDULES');
         };
@@ -309,12 +310,8 @@
             try {
                 const data = JSON.parse(event.data.trim());
                 if (data.type === 'statusUpdate') {
-                    updateStatus('connectionStatus', 'Device: Online', 'badge-success');
-                    document.querySelectorAll('.control-btn, .control-input').forEach(el => el.disabled = false);
                     updateDashboard(data.payload);
                 } else if (data.type === 'logPageUpdate') {
-                    updateStatus('connectionStatus', 'Device: Online', 'badge-success');
-                    document.querySelectorAll('.control-btn, .control-input').forEach(el => el.disabled = false);
                     updateLogTable(data.payload);
                 } else if (data.type === 'scheduleUpdate') {
                     renderSchedules(data.payload);
@@ -323,7 +320,7 @@
                     if (document.getElementById('mainAutoToggle')) document.getElementById('mainAutoToggle').checked = data.payload;
                 } else if (data.type === 'espStatus') {
                     const isOnline = data.status === 'online';
-                    updateStatus('connectionStatus', isOnline ? 'Device: Online' : 'Device: Offline', isOnline ? 'badge-success' : 'badge-error');
+                    updateStatus('connectionStatus', isOnline ? 'Online' : 'Offline', isOnline ? 'badge-success' : 'badge-error');
                     document.querySelectorAll('.control-btn, .control-input').forEach(el => el.disabled = !isOnline);
                     
                     if (!isOnline) {
