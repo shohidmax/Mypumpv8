@@ -148,7 +148,13 @@
                 <li><div class="card bg-base-100 shadow-md"><div class="card-body p-4"><label class="label pb-1"><span class="label-text font-semibold">WebSocket Server Host</span></label><div class="join w-full"><input type="text" id="wsHostInput" placeholder="e.g., pumpv3.onrender.com" class="input input-bordered join-item w-full control-input text-sm" disabled/><button onclick="saveWsHost()" class="btn btn-info join-item control-btn" disabled>Save</button></div></div></div></li>
                 <div class="divider"></div>
                 <li class="menu-title"><span>Automation</span></li>
-                <li><button onclick="openScheduleModal()" class="btn btn-outline control-btn" disabled>Customize Schedule (Alarms)</button></li>
+                <li><button onclick="openScheduleModal()" class="btn btn-outline control-btn mb-2" disabled>Customize Schedule (Alarms)</button></li>
+                <li>
+                    <label class="label cursor-pointer p-3 bg-base-100 rounded-lg shadow-sm border border-base-300">
+                        <span class="label-text font-bold text-error">Always ON Mode</span>
+                        <input type="checkbox" id="alwaysOnToggle" class="toggle toggle-error" onchange="toggleAlwaysOn(this.checked)" disabled />
+                    </label>
+                </li>
                 <div class="divider"></div>
                 <li class="menu-title"><span>Device Actions</span></li>
                 <li><button onclick="showActionConfirmation('RESTART_ESP', 'Are you sure you want to restart the device?')" class="btn btn-error control-btn" disabled>Restart Device</button></li>
@@ -280,7 +286,10 @@
         const wsUrl = 'wss://mypump.espserver.site';
         ws = new WebSocket(wsUrl);
         
-        ws.onopen = () => { updateStatus('connectionStatus', 'Connected', 'badge-success'); };
+        ws.onopen = () => { 
+            updateStatus('connectionStatus', 'Connected', 'badge-success'); 
+            sendCommand('GET_ALWAYS_ON');
+        };
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data.trim());
@@ -294,6 +303,8 @@
                     updateLogTable(data.payload);
                 } else if (data.type === 'scheduleUpdate') {
                     renderSchedules(data.payload);
+                } else if (data.type === 'alwaysOnUpdate') {
+                    document.getElementById('alwaysOnToggle').checked = data.payload;
                 } else if (data.type === 'espStatus') {
                     const isOnline = data.status === 'online';
                     updateStatus('connectionStatus', isOnline ? 'Online' : 'Offline', isOnline ? 'badge-success' : 'badge-error');
@@ -499,6 +510,11 @@
         if(nextBtn) nextBtn.disabled = (logCurrentPage >= logTotalPages - 1);
     }
 
+    function toggleAlwaysOn(isChecked) {
+        sendCommand('TOGGLE_ALWAYS_ON', isChecked);
+        showToast(isChecked ? "Always ON Enforced" : "Always ON Disabled", "info");
+    }
+
     // Schedule Management Logic
     function openScheduleModal() {
         if(ws && ws.readyState === WebSocket.OPEN) sendCommand('GET_SCHEDULES');
@@ -580,6 +596,17 @@
         });
     }
 
+    // Request initial state on connect
+    function fetchInitialStates() {
+        if(ws && ws.readyState === WebSocket.OPEN) {
+             sendCommand('GET_ALWAYS_ON');
+        }
+    }
+
+    // We can hook fetchInitialStates inside connect() after identified
+    const originalSend = WebSocket.prototype.send;
+    // Actually better to just call it on open: (implemented in connect() open event)
+    
     connect();
 </script>
 </body>

@@ -140,14 +140,17 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             DeserializationError error = deserializeJson(doc, payload);
             if (!error) {
                 String command = doc["command"];
-                if (command == "RELAY_1") {
+                if (command == "RELAY_1" || command == "RELAY_1_AUTO" || command == "RELAY_1_ALWAYS") {
                     digitalWrite(RELAY_1, HIGH);
                     relay1_timer = millis();
-                    deviceLastAction = "Motor ON (Remote)";
-                } else if (command == "RELAY_2") {
+                    if (command == "RELAY_1_AUTO") deviceLastAction = "Motor ON (Auto)";
+                    else if (command == "RELAY_1_ALWAYS") deviceLastAction = "Motor ON (Always Mode)";
+                    else deviceLastAction = "Motor ON (Remote)";
+                } else if (command == "RELAY_2" || command == "RELAY_2_AUTO") {
                     digitalWrite(RELAY_2, HIGH);
                     relay2_timer = millis();
-                    deviceLastAction = "Motor OFF (Remote)";
+                    if (command == "RELAY_2_AUTO") deviceLastAction = "Motor OFF (Auto)";
+                    else deviceLastAction = "Motor OFF (Remote)";
                 } else if (command == "RESET") {
                     digitalWrite(relay_3, HIGH);
                     relay3_timer = millis();

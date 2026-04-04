@@ -38,6 +38,17 @@ const ScheduleSchema = new mongoose.Schema({
 });
 const MotorSchedule = mongoose.model('MotorSchedule8c', ScheduleSchema);
 
+const SettingsSchema = new mongoose.Schema({
+    isAlwaysOn: { type: Boolean, default: false }
+});
+const SystemSettings = mongoose.model('SystemSettings8c', SettingsSchema);
+
+let globalAlwaysOn = false;
+SystemSettings.findOne().then(doc => {
+    if(!doc) { new SystemSettings().save(); }
+    else { globalAlwaysOn = doc.isAlwaysOn; }
+}).catch(console.error);
+
 // --- Static Files ---
 // Serve files from the sibling 'Dashboard' directory
 app.use(express.static(path.join(__dirname, '../Dashboard')));
@@ -211,6 +222,18 @@ wss.on('connection', (ws) => {
                         });
                     }
                 } catch (err) { console.error("Error toggling schedule", err); }
+            } else if (data.command === 'TOGGLE_ALWAYS_ON') {
+                globalAlwaysOn = data.value;
+                SystemSettings.findOneAndUpdate({}, {isAlwaysOn: globalAlwaysOn}, {upsert: true}).catch(console.error);
+                webClients.forEach(c => {
+                    if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'alwaysOnUpdate', payload: globalAlwaysOn }));
+                });
+                if(globalAlwaysOn && lastMotorStatus === 'OFF' && esp32Client && esp32Client.readyState === WebSocket.OPEN) {
+                     console.log("Always ON Enabled: Force starting motor");
+                     esp32Client.send('{"command":"RELAY_1_ALWAYS"}');
+                }
+            } else if (data.command === 'GET_ALWAYS_ON') {
+                ws.send(JSON.stringify({ type: 'alwaysOnUpdate', payload: globalAlwaysOn }));
             } else {
                  // Forward other commands (RELAY, RESET, RESTART) to ESP32
                 if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
@@ -223,6 +246,12 @@ wss.on('connection', (ws) => {
             // Handle ESP32 Status Updates
             const payload = data.payload;
             const currentMotorStatus = payload.motorStatus;
+
+            // ALWAYS ON ENFORCEMENT
+            if (globalAlwaysOn && currentMotorStatus === 'OFF') {
+                console.log("Always ON Enforcer: Re-triggering Motor ON");
+                esp32Client.send('{"command":"RELAY_1_ALWAYS"}');
+            }
 
             // Logic to track duration and save log
             if (currentMotorStatus === 'ON' && lastMotorStatus === 'OFF') {
@@ -355,13 +384,13 @@ setInterval(async () => {
         if (triggerOn && lastMotorStatus === 'OFF') {
             console.log("Automation Engine: Triggering Motor ON");
             if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
-                esp32Client.send(JSON.stringify({ command: 'RELAY_1' }));
+                esp32Client.send(JSON.stringify({ command: 'RELAY_1_AUTO' }));
             }
         }
         if (triggerOff && lastMotorStatus === 'ON') {
             console.log("Automation Engine: Triggering Motor OFF");
             if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
-                esp32Client.send(JSON.stringify({ command: 'RELAY_2' }));
+                esp32Client.send(JSON.stringify({ command: 'RELAY_2_AUTO' }));
             }
         }
     } catch (err) {
