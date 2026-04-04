@@ -209,6 +209,24 @@ void configModeCallback(WiFiManager *myWiFiManager) {
   Serial.println(WiFi.softAPIP());
   // Start blinking LED every 0.3 seconds
   blinker.attach(0.3, tick);
+
+  if (displayFound) {
+      display.clearDisplay();
+      display.setTextColor(WHITE);
+      display.setTextSize(1);
+      display.setCursor(20, 0);
+      display.println("WiFi Setup Mode");
+      display.drawLine(0, 10, 128, 10, WHITE);
+      display.setCursor(0, 20);
+      display.println("Connect to WiFi:");
+      display.setCursor(0, 35);
+      display.setTextSize(2);
+      display.print("Mutho-Sech");
+      display.setTextSize(1);
+      display.setCursor(0, 55);
+      display.print("192.168.4.1");
+      display.display();
+  }
 }
 
 void setup() {
@@ -221,15 +239,6 @@ void setup() {
       displayFound = false;
     } else {
       displayFound = true;
-      display.clearDisplay();
-      display.setTextSize(2);
-      display.setTextColor(WHITE);
-      display.setCursor(25, 15);
-      display.println("SHOHID");
-      display.setCursor(15, 35);
-      display.println("PUMP V8");
-      display.display();
-      delay(2000); // Show boot logo for 2 sec
     }
     
     // Initialize Pins
@@ -270,6 +279,16 @@ void setup() {
     // wm.resetSettings(); // COMMENTED OUT: Settings will now be saved!
     wm.setAPCallback(configModeCallback); // Set Blink Callback
     wm.setConfigPortalTimeout(180); // 3 Minutes timeout
+
+    if (displayFound) {
+      display.clearDisplay();
+      display.setTextSize(1);
+      display.setCursor(0, 25);
+      display.println("Attempting Connection");
+      display.setCursor(0, 40);
+      display.println("Wait...");
+      display.display();
+    }
 
     // --- STANDARD NVS INIT END ---
 

@@ -113,6 +113,12 @@ wss.on('connection', (ws) => {
                 }
             });
 
+            // Initial Always ON Trigger upon device coming online
+            if (globalAlwaysOn) {
+                console.log("Always ON Enforcer: Triggering Motor ON upon ESP32 Connection.");
+                ws.send('{"command":"RELAY_1_ALWAYS"}');
+            }
+
         } else if (data.type === 'command' && ws !== esp32Client) {
             // Handle Web Client Commands
             if (data.command === 'GET_LOG_PAGE') {
@@ -246,12 +252,6 @@ wss.on('connection', (ws) => {
             // Handle ESP32 Status Updates
             const payload = data.payload;
             const currentMotorStatus = payload.motorStatus;
-
-            // ALWAYS ON ENFORCEMENT
-            if (globalAlwaysOn && currentMotorStatus === 'OFF') {
-                console.log("Always ON Enforcer: Re-triggering Motor ON");
-                esp32Client.send('{"command":"RELAY_1_ALWAYS"}');
-            }
 
             // Logic to track duration and save log
             if (currentMotorStatus === 'ON' && lastMotorStatus === 'OFF') {
@@ -397,6 +397,14 @@ setInterval(async () => {
         console.error("Automation error:", err);
     }
 }, 60000); // 1 minute ticker
+
+// ALWAYS ON ENFORCER: 5-Minute Ticker
+setInterval(() => {
+    if (globalAlwaysOn && lastMotorStatus === 'OFF' && esp32Client && esp32Client.readyState === WebSocket.OPEN) {
+        console.log("Always ON Enforcer (5 Min Check): Found Motor OFF, Triggering ON");
+        esp32Client.send(JSON.stringify({ command: 'RELAY_1_ALWAYS' }));
+    }
+}, 5 * 60 * 1000); // 5 minutes
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
