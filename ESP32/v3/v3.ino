@@ -13,7 +13,7 @@
 
 
 // --- Configuration ---
-const char* websocket_server_host = "pumpv6c3.espserver.site";
+const char* websocket_server_host = "mypump.espserver.site";
 const uint16_t websocket_server_port = 443;
 #define WDT_TIMEOUT 30 // 30 Seconds Watchdog
 
@@ -21,7 +21,7 @@ const uint16_t websocket_server_port = 443;
 const char* firmwareUrl = "https://github.com/shohidmax/pumpv6c3/releases/download/c6v3/v3.ino.bin";
 const char* versionUrl = "https://raw.githubusercontent.com/shohidmax/pumpv6c3/refs/heads/main/Server/version.txt";
 // Current firmware version
-const char* currentFirmwareVersion = "1.1.7";
+const char* currentFirmwareVersion = "1.1.8";
 
 // Timers
 unsigned long lastUpdateCheck = 0;
@@ -44,6 +44,7 @@ unsigned long relay2_timer = 0;
 unsigned long relay3_timer = 0;
 const int relay_duration = 1000; // 1 Second Pulse
 
+String deviceLastAction = "System Boot";
 unsigned long lastStatusUpdate = 0;
 String lastMotorStat = "";
 String lastSysMode = "";
@@ -87,6 +88,7 @@ void sendStatus() {
     if (reading != stableMotorState) {
        if ((millis() - lastDebounceTime) > debounceDelay) {
          stableMotorState = reading; // Update stable state
+         deviceLastAction = (stableMotorState == "ON") ? "Motor ON (Switch)" : "Motor OFF (Switch)";
          lastDebounceTime = millis();
        }
     } else {
@@ -108,7 +110,9 @@ void sendStatus() {
         payload["systemMode"] = currentMode;
         payload["wifiSignal"] = currentSignal;
         payload["localIP"] = WiFi.localIP().toString();
+        payload["wifiSSID"] = WiFi.SSID();
         payload["version"] = currentFirmwareVersion;
+        payload["lastAction"] = deviceLastAction;
         
         String jsonString;
         serializeJson(doc, jsonString);
@@ -139,12 +143,15 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 if (command == "RELAY_1") {
                     digitalWrite(RELAY_1, HIGH);
                     relay1_timer = millis();
+                    deviceLastAction = "Motor ON (Remote)";
                 } else if (command == "RELAY_2") {
                     digitalWrite(RELAY_2, HIGH);
                     relay2_timer = millis();
+                    deviceLastAction = "Motor OFF (Remote)";
                 } else if (command == "RESET") {
                     digitalWrite(relay_3, HIGH);
                     relay3_timer = millis();
+                    deviceLastAction = "System Reset";
                 } else if (command == "RESTART_ESP") {
                     webSocket.disconnect();
                     delay(500);

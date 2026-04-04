@@ -180,10 +180,24 @@
         const toastContainer = document.getElementById('toast-container');
         const alertClass = { success: 'alert-success', info: 'alert-info', error: 'alert-error' }[type];
         const toastElement = document.createElement('div');
-        toastElement.className = `alert ${alertClass} shadow-lg`;
-        toastElement.innerHTML = `<span>${message}</span>`;
+        toastElement.className = `alert ${alertClass} shadow-2xl transition-all duration-300`;
+        
+        let iconHtml = '';
+        if (type === 'info') {
+            iconHtml = `<span class="loading loading-spinner loading-md opacity-80"></span>`;
+        } else if (type === 'success') {
+            iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-7 w-7" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+        } else if (type === 'error') {
+            iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-7 w-7" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+        }
+        
+        toastElement.innerHTML = `<div class="flex items-center gap-3">${iconHtml}<span class="font-semibold text-base">${message}</span></div>`;
         toastContainer.appendChild(toastElement);
-        setTimeout(() => { toastElement.remove(); }, 3000);
+        
+        setTimeout(() => { 
+            toastElement.classList.add('opacity-0', 'translate-y-4');
+            setTimeout(() => toastElement.remove(), 300);
+        }, 3000);
     }
 
     function updateStatus(elementId, text, className) {
@@ -195,7 +209,7 @@
     }
 
     function connect() {
-        const wsUrl = 'wss://pumpv6c3.espserver.site';
+        const wsUrl = 'wss://mypump.espserver.site';
         ws = new WebSocket(wsUrl);
         
         ws.onopen = () => { updateStatus('connectionStatus', 'Connected', 'badge-success'); };
@@ -272,8 +286,16 @@
     document.getElementById('confirmActionButton').addEventListener('click', () => {
         if (pendingAction) {
             sendCommand(pendingAction.command, pendingAction.value);
-            let actionText = pendingAction.command.replace(/_/g, ' ').toLowerCase();
-            showToast(`Requesting to ${actionText}...`, 'info');
+            
+            let displayMsg = 'Processing request...';
+            if (pendingAction.command === 'RELAY_1') displayMsg = 'Sending command to Start Motor...';
+            else if (pendingAction.command === 'RELAY_2') displayMsg = 'Sending command to Stop Motor...';
+            else if (pendingAction.command === 'RESET') displayMsg = 'Resetting System...';
+            else if (pendingAction.command === 'RESTART_ESP') displayMsg = 'Restarting Device...';
+            else if (pendingAction.command === 'CLEAR_LOGS') displayMsg = 'Clearing Logs...';
+            else if (pendingAction.command === 'SET_WSHOST') displayMsg = 'Saving new Host...';
+
+            showToast(displayMsg, 'info');
             pendingAction = null;
             action_modal.close();
         }
@@ -301,7 +323,7 @@
     function updateDashboard(data) {
         document.getElementById('motorStatus').textContent = data.motorStatus || '--';
         document.getElementById('systemMode').textContent = data.systemMode || '--';
-        document.getElementById('ipTooltip').setAttribute('data-tip', `IP: ${data.localIP || 'N/A'}`);
+        document.getElementById('ipTooltip').setAttribute('data-tip', `IP: ${data.localIP || 'N/A'} | WiFi: ${data.wifiSSID || 'N/A'}`);
         document.getElementById('lastAction').textContent = data.lastAction || '--';
         
         const wsHostInput = document.getElementById('wsHostInput');

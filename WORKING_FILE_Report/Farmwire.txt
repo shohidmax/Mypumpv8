@@ -1,0 +1,28 @@
+ESP32 Firmware (v3.ino) - Working File Report
+
+1. Setup and Connection:
+- The ESP32 uses WiFiManager. If it can't find a saved WiFi network, it creates an Access Point named "Mutho-Sech" for the user to configure WiFi credentials.
+- It connects to a WebSocket server at "wss://pumpv6c3.espserver.site" over SSL (port 443).
+- It continuously checks the WiFi connection every 10 seconds. If it disconnects, it attempts to reconnect automatically without blocking the main loop.
+
+2. Hardware Control (Relays & Switches):
+- Relays (RELAY_1, RELAY_2, relay_3): The system uses pulse-based relay triggering. When a command is received, the corresponding relay turns HIGH (ON). A built-in timer automatically turns it LOW (OFF) after 1 second (1000ms). This pulses the physical motor starter instead of holding the relay permanently.
+- Switches (SWITCH_1, SWITCH_2): The ESP32 reads physical switches for the motor state and system mode (Normal/Emergency). A debounce logic (waiting for stable readings) is implemented for SWITCH_1 to prevent false triggering from electrical noise.
+
+3. Monitoring & Status Updates:
+- The ESP32 continuously sends real-time status updates to the server as a JSON payload: `{"type":"statusUpdate", "payload":{motorStatus, systemMode, wifiSignal, localIP, version}}`.
+- It dynamically maps the WiFi RSSI signal strength into a 0-100 scale.
+- It sends this update whenever the motor status changes, system mode changes, WiFi signal shifts by >5%, or simply every 5 seconds to keep the dashboard alive.
+
+4. Commands Execution:
+- Listens for WebSocket commands from the server:
+  - "RELAY_1": Triggers Relay 1 (Starts Motor).
+  - "RELAY_2": Triggers Relay 2 (Stops Motor).
+  - "RESET": Triggers Relay 3 (System reset).
+  - "RESTART_ESP": Disconnects and safely restarts the ESP32 locally.
+  - "CHECK_UPDATE": Manually triggers a firmware update check.
+
+5. OTA (Over-The-Air) Firmware Updates:
+- Automatically checks for new firmware on boot using a GitHub version text file.
+- It compares Semantic Versioning (e.g., 1.1.7). If a newer version exists, it downloads the compiled `.bin` file directly from GitHub Releases and flashes it automatically.
+- Integrates a Watchdog Timer (WDT) and NVS memory corruption handling to make the hardware extremely stable.

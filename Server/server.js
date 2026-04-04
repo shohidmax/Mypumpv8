@@ -9,7 +9,7 @@ const app = express();
 const server = http.createServer(app);
 
 // --- MongoDB Setup ---
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/motor_data6c";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/motor_data8c";
 mongoose.connect(MONGODB_URI)
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.error('MongoDB connection error:', err));
@@ -188,7 +188,14 @@ wss.on('connection', (ws) => {
                 const durationSec = Math.floor(durationMs / 1000);
                 
                 // Format Duration
-                const durationStr = `${Math.floor(durationSec / 60)}m ${durationSec % 60}s`;
+                let durationStr = "";
+                const hours = Math.floor(durationSec / 3600);
+                const minutes = Math.floor((durationSec % 3600) / 60);
+                const seconds = durationSec % 60;
+                
+                if (hours > 0) durationStr += `${hours}h `;
+                if (minutes > 0 || hours > 0) durationStr += `${minutes}m `;
+                durationStr += `${seconds}s`;
 
                 // Filter: Ignore logs less than 2 seconds (Switch bounce / noise)
                 if (durationSec < 2) {
