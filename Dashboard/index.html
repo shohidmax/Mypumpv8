@@ -147,6 +147,9 @@
                 <li class="menu-title"><span>Connectivity</span></li>
                 <li><div class="card bg-base-100 shadow-md"><div class="card-body p-4"><label class="label pb-1"><span class="label-text font-semibold">WebSocket Server Host</span></label><div class="join w-full"><input type="text" id="wsHostInput" placeholder="e.g., pumpv3.onrender.com" class="input input-bordered join-item w-full control-input text-sm" disabled/><button onclick="saveWsHost()" class="btn btn-info join-item control-btn" disabled>Save</button></div></div></div></li>
                 <div class="divider"></div>
+                <li class="menu-title"><span>Automation</span></li>
+                <li><button onclick="openScheduleModal()" class="btn btn-outline control-btn" disabled>Customize Schedule (Alarms)</button></li>
+                <div class="divider"></div>
                 <li class="menu-title"><span>Device Actions</span></li>
                 <li><button onclick="showActionConfirmation('RESTART_ESP', 'Are you sure you want to restart the device?')" class="btn btn-error control-btn" disabled>Restart Device</button></li>
             </ul>
@@ -156,6 +159,71 @@
     <!-- Toast & Modal Containers -->
     <div id="toast-container" class="toast toast-bottom toast-center z-50"></div>
     <dialog id="action_modal" class="modal"><div class="modal-box"><h3 class="font-bold text-lg">Confirm Action</h3><p id="action_modal_text" class="py-4">Are you sure?</p><div class="modal-action"><form method="dialog" class="flex gap-2"><button class="btn">No</button><button type="button" id="confirmActionButton" class="btn btn-primary">Yes</button></form></div></div></dialog>
+
+    <dialog id="schedule_modal" class="modal">
+        <div class="modal-box max-w-2xl bg-base-100">
+            <h3 class="font-bold text-xl mb-4 border-b pb-2">Automation Schedules</h3>
+            
+            <div id="scheduleListContainer" class="space-y-3 mb-6 max-h-64 overflow-y-auto w-full p-2 bg-base-200 rounded-lg">
+                <div class="text-center text-sm p-4 text-gray-500">Loading schedules...</div>
+            </div>
+
+            <div class="bg-base-300 p-5 rounded-lg">
+                <h4 class="font-bold text-lg mb-4">Create New Schedule</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-semibold">Schedule Type</span></label>
+                        <select id="schedType" class="select select-bordered" onchange="toggleSchedInputs()">
+                            <option value="DAILY">Daily (Everyday)</option>
+                            <option value="WEEKLY">Specific Days</option>
+                            <option value="DATE_RANGE">Date to Date Range</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-semibold">Start Time</span></label>
+                            <input type="time" id="schedStartTime" class="input input-bordered" />
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-semibold">Stop Time</span></label>
+                            <input type="time" id="schedEndTime" class="input input-bordered" />
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dynamic Conditional Inputs -->
+                <div id="schedWeeklyInputs" class="mt-4 hidden p-4 bg-base-200 rounded-lg border border-base-300">
+                    <span class="label-text block mb-3 font-semibold">Select Days:</span>
+                    <div class="flex flex-wrap gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary" value="0"/><span class="font-medium text-sm">Sun</span></label>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary" value="1"/><span class="font-medium text-sm">Mon</span></label>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary" value="2"/><span class="font-medium text-sm">Tue</span></label>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary" value="3"/><span class="font-medium text-sm">Wed</span></label>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary" value="4"/><span class="font-medium text-sm">Thu</span></label>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary" value="5"/><span class="font-medium text-sm">Fri</span></label>
+                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary" value="6"/><span class="font-medium text-sm">Sat</span></label>
+                    </div>
+                </div>
+                
+                <div id="schedDateInputs" class="mt-4 hidden grid grid-cols-2 gap-4 p-4 bg-base-200 rounded-lg border border-base-300">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-semibold">Start Date</span></label>
+                        <input type="date" id="schedStartDate" class="input input-bordered" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-semibold">End Date</span></label>
+                        <input type="date" id="schedEndDate" class="input input-bordered" />
+                    </div>
+                </div>
+                
+                <button onclick="saveNewSchedule()" class="btn btn-primary mt-6 w-full">Save Schedule</button>
+            </div>
+
+            <div class="modal-action">
+                <form method="dialog"><button class="btn btn-outline">Close</button></form>
+            </div>
+        </div>
+    </dialog>
 
 <script>
     let ws;
@@ -224,6 +292,8 @@
                     updateStatus('espStatus', 'Online', 'badge-success');
                     document.querySelectorAll('.control-btn, .control-input').forEach(el => el.disabled = false);
                     updateLogTable(data.payload);
+                } else if (data.type === 'scheduleUpdate') {
+                    renderSchedules(data.payload);
                 } else if (data.type === 'espStatus') {
                     const isOnline = data.status === 'online';
                     updateStatus('connectionStatus', isOnline ? 'Online' : 'Offline', isOnline ? 'badge-success' : 'badge-error');
@@ -427,6 +497,87 @@
 
         if(prevBtn) prevBtn.disabled = (logCurrentPage === 0);
         if(nextBtn) nextBtn.disabled = (logCurrentPage >= logTotalPages - 1);
+    }
+
+    // Schedule Management Logic
+    function openScheduleModal() {
+        if(ws && ws.readyState === WebSocket.OPEN) sendCommand('GET_SCHEDULES');
+        document.getElementById('schedule_modal').showModal();
+    }
+
+    function toggleSchedInputs() {
+        const type = document.getElementById('schedType').value;
+        document.getElementById('schedWeeklyInputs').classList.toggle('hidden', type !== 'WEEKLY');
+        document.getElementById('schedDateInputs').classList.toggle('hidden', type !== 'DATE_RANGE');
+    }
+
+    function saveNewSchedule() {
+        const type = document.getElementById('schedType').value;
+        const startTime = document.getElementById('schedStartTime').value;
+        const endTime = document.getElementById('schedEndTime').value;
+        if(!startTime || !endTime) return showToast("Start and Stop times are required", "error");
+
+        const data = { type, startTime, endTime, isActive: true };
+
+        if (type === 'WEEKLY') {
+            const boxes = document.querySelectorAll('#schedWeeklyInputs input[type="checkbox"]:checked');
+            if(boxes.length===0) return showToast("Select at least one day", "error");
+            data.daysOfWeek = Array.from(boxes).map(b => parseInt(b.value));
+        } else if (type === 'DATE_RANGE') {
+            const sDate = document.getElementById('schedStartDate').value;
+            const eDate = document.getElementById('schedEndDate').value;
+            if(!sDate || !eDate) return showToast("Select start and end dates", "error");
+            data.startDate = sDate;
+            data.endDate = eDate;
+        }
+
+        sendCommand('ADD_SCHEDULE', data);
+        showToast("Saving schedule...", "info");
+        document.getElementById('schedStartTime').value = '';
+        document.getElementById('schedEndTime').value = '';
+    }
+
+    function toggleSchedule(id) { sendCommand('TOGGLE_SCHEDULE', id); }
+    function deleteSchedule(id) { sendCommand('DELETE_SCHEDULE', id); }
+
+    function renderSchedules(schedules) {
+        const container = document.getElementById('scheduleListContainer');
+        container.innerHTML = '';
+        if(!schedules || schedules.length === 0) {
+            container.innerHTML = '<div class="text-center p-6 text-gray-500 bg-base-100 rounded border border-dashed border-base-300">No active schedules found. Create one using the form below.</div>';
+            return;
+        }
+        
+        schedules.forEach(s => {
+            let desc = '';
+            let timeline = `<div class="font-bold text-lg text-primary">${s.startTime} <span class="text-base-content text-sm mx-1">➜</span> ${s.endTime}</div>`;
+            
+            if(s.type === 'DAILY') desc = 'Runs Everyday';
+            else if(s.type === 'WEEKLY') {
+                const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+                desc = 'Days: ' + s.daysOfWeek.map(d=>days[d]).join(', ');
+            }
+            else if(s.type === 'DATE_RANGE') {
+                const sd = new Date(s.startDate).toLocaleDateString();
+                const ed = new Date(s.endDate).toLocaleDateString();
+                desc = `Active: ${sd} - ${ed}`;
+            }
+
+            container.innerHTML += `
+                <div class="flex justify-between items-center bg-base-100 p-4 rounded-lg shadow-sm border border-base-300 gap-3 hover:shadow-md transition">
+                    <div class="flex-1">
+                        ${timeline}
+                        <div class="text-sm font-medium opacity-70 mt-1"><span class="badge badge-sm badge-outline mr-1">${s.type}</span> ${desc}</div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" class="toggle toggle-success toggle-md" ${s.isActive ? 'checked' : ''} onchange="toggleSchedule('${s._id}')" />
+                        <button onclick="deleteSchedule('${s._id}')" class="btn btn-square btn-ghost text-error btn-sm hover:bg-error hover:text-white transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
     }
 
     connect();

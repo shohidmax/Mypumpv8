@@ -26,6 +26,18 @@ const LogSchema = new mongoose.Schema({
 });
 const MotorLog = mongoose.model('MotorLog46', LogSchema);
 
+const ScheduleSchema = new mongoose.Schema({
+    type: { type: String, enum: ['DAILY', 'WEEKLY', 'DATE_RANGE'], required: true },
+    isActive: { type: Boolean, default: true },
+    startTime: String, // HH:MM like "08:00"
+    endTime: String, // HH:MM like "10:30"
+    daysOfWeek: [Number], // 0=Sun, 1=Mon...
+    startDate: Date,
+    endDate: Date,
+    createdAt: { type: Date, default: Date.now }
+});
+const MotorSchedule = mongoose.model('MotorSchedule8c', ScheduleSchema);
+
 // --- Static Files ---
 // Serve files from the sibling 'Dashboard' directory
 app.use(express.static(path.join(__dirname, '../Dashboard')));
@@ -165,6 +177,40 @@ wss.on('connection', (ws) => {
                 } catch (err) {
                     console.error("Error clearing logs:", err);
                 }
+            } else if (data.command === 'GET_SCHEDULES') {
+                try {
+                    const schedules = await MotorSchedule.find().sort({ createdAt: -1 });
+                    ws.send(JSON.stringify({ type: 'scheduleUpdate', payload: schedules }));
+                } catch (err) { console.error("Error fetching schedules", err); }
+            } else if (data.command === 'ADD_SCHEDULE') {
+                try {
+                    const newSchedule = new MotorSchedule(data.value);
+                    await newSchedule.save();
+                    const schedules = await MotorSchedule.find().sort({ createdAt: -1 });
+                    webClients.forEach(c => {
+                        if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'scheduleUpdate', payload: schedules }));
+                    });
+                } catch (err) { console.error("Error adding schedule", err); }
+            } else if (data.command === 'DELETE_SCHEDULE') {
+                try {
+                    await MotorSchedule.findByIdAndDelete(data.value);
+                    const schedules = await MotorSchedule.find().sort({ createdAt: -1 });
+                    webClients.forEach(c => {
+                        if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'scheduleUpdate', payload: schedules }));
+                    });
+                } catch (err) { console.error("Error deleting schedule", err); }
+            } else if (data.command === 'TOGGLE_SCHEDULE') {
+                try {
+                    const sched = await MotorSchedule.findById(data.value);
+                    if(sched) {
+                        sched.isActive = !sched.isActive;
+                        await sched.save();
+                        const schedules = await MotorSchedule.find().sort({ createdAt: -1 });
+                        webClients.forEach(c => {
+                            if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'scheduleUpdate', payload: schedules }));
+                        });
+                    }
+                } catch (err) { console.error("Error toggling schedule", err); }
             } else {
                  // Forward other commands (RELAY, RESET, RESTART) to ESP32
                 if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
@@ -267,6 +313,61 @@ wss.on('connection', (ws) => {
         console.error('WebSocket error:', error);
     });
 });
+
+// --- Automation Engine ---
+setInterval(async () => {
+    try {
+        const schedules = await MotorSchedule.find({ isActive: true });
+        if(schedules.length === 0) return;
+
+        const now = new Date();
+        const bdTimeStr = now.toLocaleString("en-US", { timeZone: "Asia/Dhaka", hour12: false, hour: '2-digit', minute: '2-digit' });
+        
+        const bdDateStrList = now.toLocaleString("en-US", { timeZone: "Asia/Dhaka", year:'numeric', month:'2-digit', day:'2-digit' }).split('/');
+        const bdDate = new Date(`${bdDateStrList[2]}-${bdDateStrList[0]}-${bdDateStrList[1]}T00:00:00`); 
+        const currentWeekday = bdDate.getDay(); 
+
+        let triggerOn = false;
+        let triggerOff = false;
+
+        schedules.forEach(sched => {
+            let matchesDay = false;
+            if (sched.type === 'DAILY') {
+                matchesDay = true;
+            } else if (sched.type === 'WEEKLY') {
+                if (sched.daysOfWeek && sched.daysOfWeek.includes(currentWeekday)) {
+                    matchesDay = true;
+                }
+            } else if (sched.type === 'DATE_RANGE') {
+                const sDate = new Date(sched.startDate); sDate.setHours(0,0,0,0);
+                const eDate = new Date(sched.endDate); eDate.setHours(23,59,59,999);
+                if (bdDate >= sDate && bdDate <= eDate) {
+                    matchesDay = true;
+                }
+            }
+
+            if (matchesDay) {
+                if (sched.startTime === bdTimeStr) triggerOn = true;
+                if (sched.endTime === bdTimeStr) triggerOff = true;
+            }
+        });
+
+        if (triggerOn && lastMotorStatus === 'OFF') {
+            console.log("Automation Engine: Triggering Motor ON");
+            if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
+                esp32Client.send(JSON.stringify({ command: 'RELAY_1' }));
+            }
+        }
+        if (triggerOff && lastMotorStatus === 'ON') {
+            console.log("Automation Engine: Triggering Motor OFF");
+            if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
+                esp32Client.send(JSON.stringify({ command: 'RELAY_2' }));
+            }
+        }
+    } catch (err) {
+        console.error("Automation error:", err);
+    }
+}, 60000); // 1 minute ticker
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
