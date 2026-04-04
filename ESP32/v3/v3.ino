@@ -15,6 +15,13 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+#ifndef WHITE
+#define WHITE SSD1306_WHITE
+#endif
+#ifndef BLACK
+#define BLACK SSD1306_BLACK
+#endif
+
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
@@ -47,7 +54,7 @@ const unsigned long wifiCheckInterval = 10000; // Check WiFi every 10 seconds
 #define RELAY_2 26
 #define BUZZER_PIN 13 // Previously relay_3
 #define SWITCH_1 23
-#define SWITCH_2 22
+#define SWITCH_2 19 // Moved from 22 to 19 to fix I2C (SDA/SCL) pin conflict
 
 // --- GLOBAL VARIABLES ---
 WebSocketsClient webSocket;
@@ -381,17 +388,13 @@ void updateDisplay() {
     
     display.drawLine(0, 10, 128, 10, WHITE);
     
-    // Row 2: Uptime & Server
-    unsigned long upSec = millis() / 1000;
-    int m = (upSec % 3600) / 60;
-    int s = upSec % 60;
-    char upStr[16];
-    sprintf(upStr, "Up: %02dm%02ds", m, s);
+    // Row 2: Server Status
     display.setCursor(0, 14);
-    display.print(upStr);
-
-    display.setCursor(80, 14);
-    if (isServerConnected) display.print("Srv:OK"); else display.print("Srv: X");
+    if (isServerConnected) {
+        display.print("Server: Connected");
+    } else {
+        display.print("Server: Offline");
+    }
     
     // Body: Motor Status
     display.setCursor(0, 26);
@@ -412,7 +415,7 @@ void updateDisplay() {
     // Body: System Mode
     display.setTextSize(1);
     display.setCursor(0, 44);
-    String modeToPrint = (digitalRead(SWITCH_2) == LOW) ? "Normal" : "Emergncy";
+    String modeToPrint = (digitalRead(SWITCH_2) == LOW) ? "Normal" : "Emergency";
     display.print("Mode: ");
     display.print(modeToPrint);
     

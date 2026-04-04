@@ -234,9 +234,15 @@ wss.on('connection', (ws) => {
                 webClients.forEach(c => {
                     if (c.readyState === WebSocket.OPEN) c.send(JSON.stringify({ type: 'alwaysOnUpdate', payload: globalAlwaysOn }));
                 });
-                if(globalAlwaysOn && lastMotorStatus === 'OFF' && esp32Client && esp32Client.readyState === WebSocket.OPEN) {
-                     console.log("Always ON Enabled: Force starting motor");
-                     esp32Client.send('{"command":"RELAY_1_ALWAYS"}');
+                
+                if (esp32Client && esp32Client.readyState === WebSocket.OPEN) {
+                    if (globalAlwaysOn && lastMotorStatus === 'OFF') {
+                        console.log("Always ON Enabled: Force starting motor");
+                        esp32Client.send(JSON.stringify({ command: 'RELAY_1_ALWAYS' }));
+                    } else if (!globalAlwaysOn && lastMotorStatus === 'ON') {
+                        console.log("Always ON Disabled: Force stopping motor");
+                        esp32Client.send(JSON.stringify({ command: 'RELAY_2_AUTO' }));
+                    }
                 }
             } else if (data.command === 'GET_ALWAYS_ON') {
                 ws.send(JSON.stringify({ type: 'alwaysOnUpdate', payload: globalAlwaysOn }));
