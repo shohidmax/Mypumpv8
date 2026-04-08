@@ -302,7 +302,10 @@
         
         ws.onopen = () => { 
             updateStatus('connectionStatus', 'Server Connected', 'badge-info'); 
-            ws.send(JSON.stringify({ type: 'web-identify' }));
+            const urlParams = new URLSearchParams(window.location.search);
+            const devMac = urlParams.get('mac');
+            const identifyPayload = devMac ? { type: 'web-identify', macAddress: devMac } : { type: 'web-identify' };
+            ws.send(JSON.stringify(identifyPayload));
             sendCommand('GET_ALWAYS_ON');
             sendCommand('GET_SCHEDULES');
         };
