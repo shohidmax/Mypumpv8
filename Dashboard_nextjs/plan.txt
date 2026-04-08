@@ -1,5 +1,0 @@
-crate an next js app for 100 device control and monitoring
-each user controll theare own device
-each user get index.html inter face for device 
-device filter with  mac id , 8 digit Serial number and Email address 
-add firebase auth for authentication    
